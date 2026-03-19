@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Campus Navigator</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+    }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    /* Popup styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .popup-title {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    .popup-time {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    /* Button */
+    .popup-btn {
+      padding: 8px 12px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .popup-btn:hover {
+      background: #3730a3;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      z-index: 1000;
+      width: 200px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h3>Filter Events</h3>
+  <select id="filter" class="popup-btn">
+    <option value="all">All</option>
+    <option value="sports">Sports</option>
+    <option value="study">Study</option>
+  </select>
+</div>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+  // Create map
+  const map = L.map('map').setView([52.5862, -2.1280], 16); // Wolverhampton example
+
+  // Map tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // Example events
+  const events = [
+    {
+      title: "Football Match",
+      type: "sports",
+      time: "3:00 PM",
+      coords: [52.5865, -2.1275]
+    },
+    {
+      title: "Study Group",
+      type: "study",
+      time: "1:00 PM",
+      coords: [52.5858, -2.1285]
+    }
+  ];
+
+  let markers = [];
+
+  function renderEvents(filter = "all") {
+    // Clear old markers
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    events.forEach(event => {
+      if (filter === "all" || event.type === filter) {
+
+        const marker = L.marker(event.coords).addTo(map);
+
+        marker.bindPopup(`
+          <div>
+            <div class="popup-title">${event.title}</div>
+            <div class="popup-time">${event.time}</div>
+            <button class="popup-btn" onclick="getDirections(${event.coords})">
+              Get Directions
+            </button>
+          </div>
+        `);
+
+        markers.push(marker);
+      }
+    });
+  }
+
+  renderEvents();
+
+  // Filter change
+  document.getElementById("filter").addEventListener("change", (e) => {
+    renderEvents(e.target.value);
+  });
+
+  // Directions (simple line)
+  function getDirections(lat, lng) {
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(pos => {
+      const user = [pos.coords.latitude, pos.coords.longitude];
+
+      // Draw route line
+      L.polyline([user, [lat, lng]], {
+        color: "#4f46e5",
+        weight: 5,
+        dashArray: "8,8"
+      }).addTo(map);
+    });
+  }
+</script>
+
+</body>
+</html>
