@@ -1,74 +1,83 @@
 <?php
 session_start();
-// Ensure captcha_text exists BEFORE any HTML
-if (!isset($_SESSION['captcha_num1']) || !isset($_SESSION['captcha_num2'])) {
-    $_SESSION['captcha_num1'] = rand(1, 10);
-    $_SESSION['captcha_num2'] = rand(1, 10);
-    $_SESSION['captcha_answer'] = $_SESSION['captcha_num1'] + $_SESSION['captcha_num2'];
-}
+include 'db.php';
 
-$captcha_text = $_SESSION['captcha_num1'] . " + " . $_SESSION['captcha_num2'];
+$message = "";
+$message_type = "";
 
-include 'dbex.php';
-
-// Generate captcha ONLY when displaying the form (GET), not when submitting POST
+// Generate captcha on GET
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $number1 = rand(1, 10);
     $number2 = rand(1, 10);
-    $_SESSION['captcha_answer'] = $number1 + $number2;
 
-    // Save numbers for displaying again
+    $_SESSION['captcha_answer'] = $number1 + $number2;
     $_SESSION['captcha_num1'] = $number1;
     $_SESSION['captcha_num2'] = $number2;
 } else {
-    // For POST requests, use the previous numbers from session
-    $number1 = $_SESSION['captcha_num1'];
-    $number2 = $_SESSION['captcha_num2'];
+    $number1 = $_SESSION['captcha_num1'] ?? rand(1, 10);
+    $number2 = $_SESSION['captcha_num2'] ?? rand(1, 10);
 }
 
 if (isset($_POST['register'])) {
+    $username = trim($_POST['username'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $captcha = trim($_POST['captcha'] ?? '');
 
-    // Filter & sanitize input
-    $username = htmlspecialchars(trim($_POST['username']));
-    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
-    $password = $_POST['password'];
-    $captcha = $_POST['captcha'];
+    $username = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+    $email = filter_var($email, FILTER_SANITIZE_EMAIL);
 
-    // Check captcha
-    if ($captcha != $_SESSION['captcha_answer']) {
-        echo "<p style='color:red;'>Captcha incorrect!</p>";
+    if ($captcha != ($_SESSION['captcha_answer'] ?? null)) {
+        $message = "Captcha incorrect!";
+        $message_type = "error";
+    } elseif (empty($username) || empty($email) || empty($password)) {
+        $message = "Please fill in all fields.";
+        $message_type = "error";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $message = "Please enter a valid email address.";
+        $message_type = "error";
     } else {
+        $check = $mysqli->prepare("SELECT id FROM users WHERE email = ?");
+        $check->bind_param("s", $email);
+        $check->execute();
+        $check->store_result();
 
-        // Encrypt password
-        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
-        // Insert using prepared statements
-        $stmt = $mysqli->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $username, $email, $hashed_password);
-
-        if ($stmt->execute()) {
-            echo "Registration successful! <a href='login.php'>Login here</a>";
+        if ($check->num_rows > 0) {
+            $message = "That email is already registered.";
+            $message_type = "error";
         } else {
-            echo "Error: " . $stmt->error;
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $role = 'user';
+
+            $stmt = $mysqli->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
+
+            if ($stmt->execute()) {
+                $message = "Registration successful! You can now log in.";
+                $message_type = "success";
+            } else {
+                $message = "Error: " . $stmt->error;
+                $message_type = "error";
+            }
+
+            $stmt->close();
         }
 
-        $stmt->close();
-
-        // Generate new captcha for the next form display
-        $number1 = rand(1, 10);
-        $number2 = rand(1, 10);
-        $_SESSION['captcha_answer'] = $number1 + $number2;
-        $_SESSION['captcha_num1'] = $number1;
-        $_SESSION['captcha_num2'] = $number2;
+        $check->close();
     }
+
+    // Regenerate captcha after submit
+    $number1 = rand(1, 10);
+    $number2 = rand(1, 10);
+    $_SESSION['captcha_answer'] = $number1 + $number2;
+    $_SESSION['captcha_num1'] = $number1;
+    $_SESSION['captcha_num2'] = $number2;
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Register</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -76,7 +85,7 @@ if (isset($_POST['register'])) {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
 
@@ -84,8 +93,8 @@ if (isset($_POST['register'])) {
             background: #ffffff;
             padding: 30px 25px;
             width: 340px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.1);
             text-align: center;
         }
 
@@ -103,13 +112,13 @@ if (isset($_POST['register'])) {
 
         input[type="text"],
         input[type="email"],
-        input[type="password"],
-        input[type="text"] {
+        input[type="password"] {
             width: 100%;
             padding: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
             border: 1px solid #ccc;
-            border-radius: 5px;
+            border-radius: 6px;
+            box-sizing: border-box;
             font-size: 14px;
         }
 
@@ -120,18 +129,29 @@ if (isset($_POST['register'])) {
             border: none;
             color: white;
             font-size: 16px;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            margin-top: 5px;
         }
 
         button:hover {
-            background: #1e7e34;
+            background: #1f7f35;
         }
 
-        p {
-            margin-top: 10px;
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 6px;
             font-size: 14px;
+        }
+
+        .error {
+            background: #ffe5e5;
+            color: #b30000;
+        }
+
+        .success {
+            background: #e6ffea;
+            color: #187a2f;
         }
 
         a {
@@ -142,12 +162,22 @@ if (isset($_POST['register'])) {
         a:hover {
             text-decoration: underline;
         }
+
+        p {
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
 
 <div class="register-container">
     <h2>Register</h2>
+
+    <?php if (!empty($message)): ?>
+        <div class="message <?php echo $message_type; ?>">
+            <?php echo htmlspecialchars($message); ?>
+        </div>
+    <?php endif; ?>
 
     <form method="post">
         <label>Username:</label>

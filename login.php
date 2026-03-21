@@ -1,8 +1,11 @@
 <?php
 session_start();
-include 'dbex.php';
+include 'db.php';
 
-// Generate captcha only when showing the form (GET request)
+$message = "";
+$message_type = "";
+
+// Generate captcha on GET
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $number1 = rand(1, 10);
     $number2 = rand(1, 10);
@@ -11,56 +14,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $_SESSION['captcha_num1'] = $number1;
     $_SESSION['captcha_num2'] = $number2;
 } else {
-    // On POST, reuse the same captcha numbers for display
-    $number1 = $_SESSION['captcha_num1'];
-    $number2 = $_SESSION['captcha_num2'];
+    $number1 = $_SESSION['captcha_num1'] ?? rand(1, 10);
+    $number2 = $_SESSION['captcha_num2'] ?? rand(1, 10);
 }
 
 if (isset($_POST['login'])) {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $captcha = trim($_POST['captcha'] ?? '');
 
-    // Sanitize input
-    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
-    $password = $_POST['password'];
-    $captcha = $_POST['captcha'];
+    $email = filter_var($email, FILTER_SANITIZE_EMAIL);
 
-    // Check captcha
-    if ($captcha != $_SESSION['captcha_answer']) {
-        echo "<p style='color:red;'>Captcha incorrect!</p>";
+    if ($captcha != ($_SESSION['captcha_answer'] ?? null)) {
+        $message = "Captcha incorrect!";
+        $message_type = "error";
     } else {
-
-        // Prepared statement for login
-        $stmt = $mysqli->prepare("SELECT id, username, password FROM users WHERE email=?");
+        $stmt = $mysqli->prepare("SELECT id, username, password, role FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->store_result();
 
         if ($stmt->num_rows > 0) {
-
-            $stmt->bind_result($id, $username, $hashed_password);
+            $stmt->bind_result($id, $username, $hashed_password, $role);
             $stmt->fetch();
 
             if (password_verify($password, $hashed_password)) {
-
-                // Login successful → set session
                 $_SESSION['user_id'] = $id;
                 $_SESSION['username'] = $username;
+                $_SESSION['email'] = $email;
+                $_SESSION['role'] = $role;
 
-                // Redirect to main page
-                header("Location: expense_tracker.php");
+                header("Location: index.php");
                 exit();
-
             } else {
-                echo "<p style='color:red;'>Incorrect password!</p>";
+                $message = "Incorrect password!";
+                $message_type = "error";
             }
-
         } else {
-            echo "<p style='color:red;'>No user found with this email!</p>";
+            $message = "No user found with that email.";
+            $message_type = "error";
         }
 
         $stmt->close();
     }
 
-    // Regenerate captcha for next form load
+    // Regenerate captcha after submit
     $number1 = rand(1, 10);
     $number2 = rand(1, 10);
     $_SESSION['captcha_answer'] = $number1 + $number2;
@@ -68,12 +66,10 @@ if (isset($_POST['login'])) {
     $_SESSION['captcha_num2'] = $number2;
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Login</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -81,7 +77,7 @@ if (isset($_POST['login'])) {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
 
@@ -89,8 +85,8 @@ if (isset($_POST['login'])) {
             background: #ffffff;
             padding: 30px 25px;
             width: 320px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.1);
             text-align: center;
         }
 
@@ -111,9 +107,10 @@ if (isset($_POST['login'])) {
         input[type="text"] {
             width: 100%;
             padding: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 14px;
             border: 1px solid #ccc;
-            border-radius: 5px;
+            border-radius: 6px;
+            box-sizing: border-box;
             font-size: 14px;
         }
 
@@ -124,7 +121,7 @@ if (isset($_POST['login'])) {
             border: none;
             color: white;
             font-size: 16px;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
         }
 
@@ -132,9 +129,21 @@ if (isset($_POST['login'])) {
             background: #0056b3;
         }
 
-        p {
-            margin-top: 10px;
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 6px;
             font-size: 14px;
+        }
+
+        .error {
+            background: #ffe5e5;
+            color: #b30000;
+        }
+
+        .success {
+            background: #e6ffea;
+            color: #187a2f;
         }
 
         a {
@@ -145,13 +154,22 @@ if (isset($_POST['login'])) {
         a:hover {
             text-decoration: underline;
         }
-    </style>
 
+        p {
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
 
 <div class="login-container">
     <h2>Login</h2>
+
+    <?php if (!empty($message)): ?>
+        <div class="message <?php echo $message_type; ?>">
+            <?php echo htmlspecialchars($message); ?>
+        </div>
+    <?php endif; ?>
 
     <form method="post">
         <label>Email:</label>

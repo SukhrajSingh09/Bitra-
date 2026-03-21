@@ -7,6 +7,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $username = $_SESSION['username'] ?? 'User';
+$role = $_SESSION['role'] ?? 'user';
+$isAdmin = ($role === 'admin');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,7 +16,6 @@ $username = $_SESSION['username'] ?? 'User';
   <meta charset="UTF-8">
   <title>Campus Navigator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
   <style>
@@ -38,7 +39,7 @@ $username = $_SESSION['username'] ?? 'User';
       border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0,0,0,0.2);
       z-index: 1000;
-      width: 260px;
+      width: 300px;
     }
 
     .popup-btn {
@@ -48,6 +49,7 @@ $username = $_SESSION['username'] ?? 'User';
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 14px;
     }
 
     .popup-btn:hover {
@@ -72,10 +74,20 @@ $username = $_SESSION['username'] ?? 'User';
       margin: 40px auto;
       padding: 20px;
       border-radius: 14px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-sizing: border-box;
     }
 
     .form-group {
       margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+      font-weight: bold;
     }
 
     .form-group input,
@@ -130,6 +142,7 @@ $username = $_SESSION['username'] ?? 'User';
 
     h3 {
       margin-bottom: 8px;
+      margin-top: 16px;
     }
 
     #filter {
@@ -153,6 +166,40 @@ $username = $_SESSION['username'] ?? 'User';
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .role-badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .info-note {
+      margin-top: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+
+    .admin-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -162,10 +209,29 @@ $username = $_SESSION['username'] ?? 'User';
 <div class="sidebar">
   <div class="user-box">
     <strong><?php echo htmlspecialchars($username); ?></strong><br>
+    <span class="role-badge"><?php echo htmlspecialchars(ucfirst($role)); ?></span><br><br>
     <a href="logout.php">Logout</a>
+
+    <?php if ($isAdmin): ?>
+      <br><a class="admin-link" href="admin_requests.php">View Admin Requests</a>
+      <br><a class="admin-link" href="event_requests.php">View Event Requests</a>
+    <?php endif; ?>
   </div>
 
-  <button class="popup-btn" type="button" onclick="openModal()">Add Event</button>
+  <div class="sidebar-actions">
+    <?php if ($isAdmin): ?>
+      <button class="popup-btn" type="button" onclick="openModal()">Add Event</button>
+    <?php else: ?>
+      <button class="popup-btn" type="button" onclick="openAdminRequestModal()">Request Admin Access</button>
+      <button class="popup-btn" type="button" onclick="openEventRequestModal()">Request Event</button>
+    <?php endif; ?>
+  </div>
+
+  <?php if (!$isAdmin): ?>
+    <div class="info-note">
+      You are logged in as a normal user. Admins can add events directly, and you can submit an event request for approval.
+    </div>
+  <?php endif; ?>
 
   <h3>Filter</h3>
   <select id="filter">
@@ -177,21 +243,25 @@ $username = $_SESSION['username'] ?? 'User';
 
 <div id="map"></div>
 
+<?php if ($isAdmin): ?>
 <div id="eventModal" class="modal">
   <div class="modal-content">
     <h2>Add Event</h2>
 
     <form id="eventForm">
       <div class="form-group">
-        <input type="text" name="title" placeholder="Title" required>
+        <label for="title">Title *</label>
+        <input type="text" id="title" name="title" required>
       </div>
 
       <div class="form-group">
-        <input type="text" name="society" placeholder="Society">
+        <label for="society">Society</label>
+        <input type="text" id="society" name="society">
       </div>
 
       <div class="form-group">
-        <select name="building" required>
+        <label for="building">Building *</label>
+        <select id="building" name="building" required>
           <option value="">Select building</option>
           <option value="MD">MD</option>
           <option value="MX">MX</option>
@@ -203,26 +273,31 @@ $username = $_SESSION['username'] ?? 'User';
       </div>
 
       <div class="form-group">
-        <input type="text" name="room" placeholder="Room">
+        <label for="room">Room</label>
+        <input type="text" id="room" name="room">
       </div>
 
       <div class="form-group">
-        <input type="date" name="event_date" required>
+        <label for="event_date">Date *</label>
+        <input type="date" id="event_date" name="event_date" required>
       </div>
 
       <div class="form-group">
-        <input type="time" name="event_time" required>
+        <label for="event_time">Time *</label>
+        <input type="time" id="event_time" name="event_time" required>
       </div>
 
       <div class="form-group">
-        <select name="type" required>
+        <label for="type">Type *</label>
+        <select id="type" name="type" required>
           <option value="study">Study</option>
           <option value="sports">Sports</option>
         </select>
       </div>
 
       <div class="form-group">
-        <textarea name="description" placeholder="Description"></textarea>
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="4"></textarea>
       </div>
 
       <div class="form-buttons">
@@ -232,10 +307,97 @@ $username = $_SESSION['username'] ?? 'User';
     </form>
   </div>
 </div>
+<?php endif; ?>
+
+<?php if (!$isAdmin): ?>
+<div id="adminRequestModal" class="modal">
+  <div class="modal-content">
+    <h2>Request Admin Access</h2>
+
+    <form id="adminRequestForm">
+      <div class="form-group">
+        <label for="request_message">Why do you need admin access?</label>
+        <textarea id="request_message" name="message" rows="5" placeholder="Explain why you need admin access..."></textarea>
+      </div>
+
+      <div class="form-buttons">
+        <button class="popup-btn" type="submit">Send Request</button>
+        <button class="popup-btn" type="button" onclick="closeAdminRequestModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="eventRequestModal" class="modal">
+  <div class="modal-content">
+    <h2>Request Event</h2>
+
+    <form id="eventRequestForm">
+      <div class="form-group">
+        <label for="req_title">Title *</label>
+        <input type="text" id="req_title" name="title" required>
+      </div>
+
+      <div class="form-group">
+        <label for="req_society">Society</label>
+        <input type="text" id="req_society" name="society">
+      </div>
+
+      <div class="form-group">
+        <label for="req_building">Building *</label>
+        <select id="req_building" name="building" required>
+          <option value="">Select building</option>
+          <option value="MD">MD</option>
+          <option value="MX">MX</option>
+          <option value="MI">MI</option>
+          <option value="MC">MC</option>
+          <option value="MB">MB</option>
+          <option value="MA">MA</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="req_room">Room</label>
+        <input type="text" id="req_room" name="room">
+      </div>
+
+      <div class="form-group">
+        <label for="req_event_date">Date *</label>
+        <input type="date" id="req_event_date" name="event_date" required>
+      </div>
+
+      <div class="form-group">
+        <label for="req_event_time">Time *</label>
+        <input type="time" id="req_event_time" name="event_time" required>
+      </div>
+
+      <div class="form-group">
+        <label for="req_type">Type *</label>
+        <select id="req_type" name="type" required>
+          <option value="study">Study</option>
+          <option value="sports">Sports</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="req_description">Description</label>
+        <textarea id="req_description" name="description" rows="4"></textarea>
+      </div>
+
+      <div class="form-buttons">
+        <button class="popup-btn" type="submit">Send Request</button>
+        <button class="popup-btn" type="button" onclick="closeEventRequestModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+const isAdmin = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+
 const map = L.map('map').setView([52.5862, -2.1280], 16);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -255,11 +417,33 @@ const buildingCoords = {
 };
 
 function openModal() {
-  document.getElementById("eventModal").style.display = "block";
+  const modal = document.getElementById("eventModal");
+  if (modal) modal.style.display = "block";
 }
 
 function closeModal() {
-  document.getElementById("eventModal").style.display = "none";
+  const modal = document.getElementById("eventModal");
+  if (modal) modal.style.display = "none";
+}
+
+function openAdminRequestModal() {
+  const modal = document.getElementById("adminRequestModal");
+  if (modal) modal.style.display = "block";
+}
+
+function closeAdminRequestModal() {
+  const modal = document.getElementById("adminRequestModal");
+  if (modal) modal.style.display = "none";
+}
+
+function openEventRequestModal() {
+  const modal = document.getElementById("eventRequestModal");
+  if (modal) modal.style.display = "block";
+}
+
+function closeEventRequestModal() {
+  const modal = document.getElementById("eventRequestModal");
+  if (modal) modal.style.display = "none";
 }
 
 map.on('click', function(e) {
@@ -387,46 +571,105 @@ document.getElementById("filter").addEventListener("change", e => {
   loadEvents(e.target.value);
 });
 
-document.getElementById("eventForm").addEventListener("submit", async e => {
-  e.preventDefault();
+if (isAdmin) {
+  const eventForm = document.getElementById("eventForm");
 
-  const formData = new FormData(e.target);
+  if (eventForm) {
+    eventForm.addEventListener("submit", async e => {
+      e.preventDefault();
 
-  try {
-    const res = await fetch("add_event.php", {
-      method: "POST",
-      body: formData
+      const formData = new FormData(e.target);
+
+      try {
+        const res = await fetch("add_event.php", {
+          method: "POST",
+          body: formData
+        });
+
+        const text = await res.text();
+        const result = JSON.parse(text);
+
+        alert(result.message);
+
+        if (result.success) {
+          closeModal();
+          loadEvents(document.getElementById("filter").value);
+          e.target.reset();
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Something went wrong while saving the event.");
+      }
     });
+  }
+}
 
-    const text = await res.text();
-    let result;
+const adminRequestForm = document.getElementById("adminRequestForm");
+if (adminRequestForm) {
+  adminRequestForm.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const formData = new FormData(adminRequestForm);
 
     try {
-      result = JSON.parse(text);
-    } catch (err) {
-      alert("add_event.php returned invalid JSON.");
-      console.error(text);
-      return;
-    }
+      const res = await fetch("request_admin.php", {
+        method: "POST",
+        body: formData
+      });
 
-    alert(result.message);
+      const text = await res.text();
+      const result = JSON.parse(text);
 
-    if (result.success) {
-      closeModal();
-      loadEvents(document.getElementById("filter").value);
-      e.target.reset();
+      alert(result.message);
+
+      if (result.success) {
+        closeAdminRequestModal();
+        adminRequestForm.reset();
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong while sending your admin request.");
     }
-  } catch (error) {
-    console.error("Error saving event:", error);
-    alert("Something went wrong while saving the event.");
-  }
-});
+  });
+}
+
+const eventRequestForm = document.getElementById("eventRequestForm");
+if (eventRequestForm) {
+  eventRequestForm.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const formData = new FormData(eventRequestForm);
+
+    try {
+      const res = await fetch("request_event.php", {
+        method: "POST",
+        body: formData
+      });
+
+      const text = await res.text();
+      const result = JSON.parse(text);
+
+      alert(result.message);
+
+      if (result.success) {
+        closeEventRequestModal();
+        eventRequestForm.reset();
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong while sending your event request.");
+    }
+  });
+}
 
 window.onclick = function(event) {
-  const modal = document.getElementById("eventModal");
-  if (event.target === modal) {
-    closeModal();
-  }
+  const eventModal = document.getElementById("eventModal");
+  const adminRequestModal = document.getElementById("adminRequestModal");
+  const eventRequestModal = document.getElementById("eventRequestModal");
+
+  if (eventModal && event.target === eventModal) closeModal();
+  if (adminRequestModal && event.target === adminRequestModal) closeAdminRequestModal();
+  if (eventRequestModal && event.target === eventRequestModal) closeEventRequestModal();
 };
 
 loadEvents();
