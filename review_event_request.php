@@ -33,12 +33,16 @@ if (!$user_id || $status !== 'pending') {
 
 if ($action === 'approve') {
     $insert = $mysqli->prepare("
-        INSERT INTO events (user_id, title, society, building, room, event_date, event_time, description, type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO events (title, society, building, room, event_date, event_time, description, type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
+
+    if (!$insert) {
+        die("Insert prepare error: " . $mysqli->error);
+    }
+
     $insert->bind_param(
-        "issssssss",
-        $user_id,
+        "ssssssss",
         $title,
         $society,
         $building,
