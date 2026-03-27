@@ -1,0 +1,182 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f9;
+}
+
+#map {
+  height: 100vh;
+  width: 100%;
+}
+
+.sidebar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  z-index: 1000;
+  width: 300px;
+}
+
+.popup-btn {
+  padding: 8px 12px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.popup-btn:hover {
+  background: #3730a3;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  left: 0;
+  top: 0;
+}
+
+.modal-content {
+  background: white;
+  width: 90%;
+  max-width: 500px;
+  margin: 40px auto;
+  padding: 20px;
+  border-radius: 14px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.user-box {
+  margin-bottom: 12px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.event-card {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.event-card:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.popup-title {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.popup-time {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.popup-desc {
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.coord-popup {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+h3 {
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+#filter {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.sidebar a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.sidebar a:hover {
+  text-decoration: underline;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.role-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.info-note {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 14px;
+}
